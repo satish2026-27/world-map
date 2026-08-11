@@ -1,772 +1,317 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interactive World Map</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Leaflet Routing Machine CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #1a1a2e;
-      color: #eee;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background: linear-gradient(135deg, #16213e, #0f3460);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-      flex-wrap: wrap;
-      z-index: 1000;
-    }
-
-    header h1 {
-      font-size: 1.3rem;
-      color: #e94560;
-      white-space: nowrap;
-    }
-
-    .search-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .search-group label {
-      font-size: 0.8rem;
-      color: #a8b2d8;
-      white-space: nowrap;
-    }
-
-    .search-group input {
-      flex: 1;
-      padding: 7px 10px;
-      border-radius: 6px;
-      border: 1px solid #344;
-      background: #0d1b2a;
-      color: #eee;
-      font-size: 0.85rem;
-      outline: none;
-      transition: border 0.2s;
-    }
-
-    .search-group input:focus {
-      border-color: #e94560;
-    }
-
-    .autocomplete-wrapper {
-      position: relative;
-      flex: 1;
-    }
-
-    .autocomplete-list {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #0d1b2a;
-      border: 1px solid #344;
-      border-radius: 6px;
-      z-index: 9999;
-      max-height: 200px;
-      overflow-y: auto;
-      display: none;
-    }
-
-    .autocomplete-list.visible {
-      display: block;
-    }
-
-    .autocomplete-list li {
-      padding: 8px 10px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      list-style: none;
-      border-bottom: 1px solid #1e2d40;
-      transition: background 0.15s;
-    }
-
-    .autocomplete-list li:hover {
-      background: #1a3450;
-    }
-
-    .btn {
-      padding: 7px 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      transition: opacity 0.2s, transform 0.1s;
-    }
-
-    .btn:hover { opacity: 0.85; }
-    .btn:active { transform: scale(0.97); }
-
-    .btn-primary { background: #e94560; color: #fff; }
-    .btn-secondary { background: #0f3460; color: #eee; border: 1px solid #344; }
-    .btn-clear { background: #2a3a4a; color: #aaa; }
-
-    #main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    #map {
-      flex: 1;
-      height: 100%;
-    }
-
-    #sidebar {
-      width: 320px;
-      background: #16213e;
-      border-left: 1px solid #2a3a5a;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      transition: width 0.3s;
-    }
-
-    #sidebar.collapsed {
-      width: 0;
-      overflow: hidden;
-      border: none;
-    }
-
-    .sidebar-toggle {
-      position: absolute;
-      right: 320px;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 900;
-      background: #0f3460;
-      border: none;
-      color: #eee;
-      width: 22px;
-      height: 50px;
-      cursor: pointer;
-      border-radius: 6px 0 0 6px;
-      font-size: 12px;
-      transition: right 0.3s;
-    }
-
-    .sidebar-section {
-      padding: 16px;
-      border-bottom: 1px solid #2a3a5a;
-    }
-
-    .sidebar-section h3 {
-      font-size: 0.9rem;
-      color: #e94560;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      font-size: 0.85rem;
-      border-bottom: 1px solid #1e2d40;
-    }
-
-    .info-row:last-child { border-bottom: none; }
-
-    .info-label { color: #a8b2d8; }
-
-    .info-value {
-      color: #eee;
-      font-weight: 600;
-      text-align: right;
-    }
-
-    .location-card {
-      background: #0d1b2a;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      border: 1px solid #2a3a5a;
-    }
-
-    .location-card .loc-name {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: #e0e0e0;
-      margin-bottom: 4px;
-    }
-
-    .location-card .loc-coords {
-      font-size: 0.75rem;
-      color: #8a9ab8;
-    }
-
-    .marker-a { color: #4caf50; }
-    .marker-b { color: #f44336; }
-
-    #instructions-panel {
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    .instruction-step {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 8px 0;
-      font-size: 0.82rem;
-      border-bottom: 1px solid #1e2d40;
-    }
-
-    .step-num {
-      background: #0f3460;
-      color: #e94560;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.72rem;
-      flex-shrink: 0;
-    }
-
-    .no-data {
-      color: #556;
-      font-size: 0.85rem;
-      padding: 12px 0;
-      text-align: center;
-    }
-
-    .travel-modes {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-
-    .mode-btn {
-      padding: 5px 12px;
-      border-radius: 20px;
-      border: 1px solid #344;
-      background: #0d1b2a;
-      color: #a8b2d8;
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: all 0.2s;
-    }
-
-    .mode-btn.active {
-      background: #e94560;
-      color: #fff;
-      border-color: #e94560;
-    }
-
-    .tip {
-      font-size: 0.78rem;
-      color: #556;
-      text-align: center;
-      padding: 8px;
-    }
-
-    /* Map click mode indicator */
-    #click-mode-banner {
-      position: absolute;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(233, 69, 96, 0.9);
-      color: #fff;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      z-index: 800;
-      display: none;
-      pointer-events: none;
-    }
-
-    /* Leaflet custom marker colors */
-    .marker-green .leaflet-marker-icon { filter: hue-rotate(120deg); }
-
-    @media (max-width: 700px) {
-      #sidebar { width: 260px; }
-      .sidebar-toggle { right: 260px; }
-      header { gap: 8px; }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Premium World Map — Interactive Globe</title>
+  <meta name="description" content="The most premium interactive world map — explore countries, populations, GDP, and more.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
-
-<header>
-  <h1>🌍 World Map</h1>
-
-  <div class="search-group">
-    <label>📍 From:</label>
-    <div class="autocomplete-wrapper">
-      <input type="text" id="search-a" placeholder="Search location A…" autocomplete="off" />
-      <ul class="autocomplete-list" id="list-a"></ul>
-    </div>
-    <button class="btn btn-secondary" id="pick-a" title="Click on map to pick location A">📌</button>
-  </div>
-
-  <div class="search-group">
-    <label>🏁 To:</label>
-    <div class="autocomplete-wrapper">
-      <input type="text" id="search-b" placeholder="Search location B…" autocomplete="off" />
-      <ul class="autocomplete-list" id="list-b"></ul>
-    </div>
-    <button class="btn btn-secondary" id="pick-b" title="Click on map to pick location B">📌</button>
-  </div>
-
-  <button class="btn btn-primary" id="calc-btn">Calculate</button>
-  <button class="btn btn-clear" id="clear-btn">Clear</button>
-</header>
-
-<div id="main">
-  <div id="map"></div>
-  <button class="sidebar-toggle" id="sidebar-toggle">◀</button>
-  <div id="sidebar">
-    <div class="sidebar-section">
-      <h3>📍 Locations</h3>
-      <div id="loc-a-card" class="location-card">
-        <div class="loc-name marker-a">Location A</div>
-        <div class="loc-coords" id="coord-a">Not set</div>
-      </div>
-      <div id="loc-b-card" class="location-card">
-        <div class="loc-name marker-b">Location B</div>
-        <div class="loc-coords" id="coord-b">Not set</div>
-      </div>
-    </div>
-
-    <div class="sidebar-section">
-      <h3>📏 Distance & Time</h3>
-      <div class="travel-modes" id="travel-modes">
-        <button class="mode-btn active" data-mode="driving">🚗 Drive</button>
-        <button class="mode-btn" data-mode="walking">🚶 Walk</button>
-        <button class="mode-btn" data-mode="cycling">🚴 Bike</button>
-        <button class="mode-btn" data-mode="flying">✈️ Fly</button>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Straight-line</span>
-        <span class="info-value" id="dist-straight">—</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Est. Distance</span>
-        <span class="info-value" id="dist-est">—</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Est. Time</span>
-        <span class="info-value" id="time-est">—</span>
-      </div>
-    </div>
-
-    <div class="sidebar-section" id="instructions-section" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
-      <h3>🗺️ Route Info</h3>
-      <div id="instructions-panel">
-        <p class="no-data">Select two locations and click Calculate.</p>
-      </div>
+  <!-- Loading Screen -->
+  <div id="loading">
+    <div class="loading-globe">🌍</div>
+    <div class="loading-title">World Map</div>
+    <div class="loading-subtitle">Loading interactive globe...</div>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar"></div>
     </div>
   </div>
-</div>
 
-<div id="click-mode-banner"></div>
+  <!-- Notification -->
+  <div id="notification"></div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Tooltip -->
+  <div id="tooltip">
+    <div class="tooltip-flag"></div>
+    <div class="tooltip-name"></div>
+    <div class="tooltip-capital"></div>
+    <div class="tooltip-divider"></div>
+    <div class="tooltip-stat"><span>Population</span><span class="tooltip-pop"></span></div>
+    <div class="tooltip-stat"><span>GDP</span><span class="tooltip-gdp"></span></div>
+    <div class="tooltip-stat"><span>Region</span><span class="tooltip-region"></span></div>
+  </div>
 
-<script>
-// ── Map Init ──────────────────────────────────────────────────────────────────
-const map = L.map('map', {
-  center: [20, 0],
-  zoom: 2,
-  zoomControl: true,
-  worldCopyJump: true
-});
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">🌐</div>
+          <span class="logo-text">WorldMap</span>
+          <span class="logo-badge">Premium</span>
+        </div>
 
-// Tile layers
-const baseLayers = {
-  "Street": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
-    maxZoom: 19
-  }),
-  "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri',
-    maxZoom: 19
-  }),
-  "Topo": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenTopoMap',
-    maxZoom: 17
-  })
-};
-baseLayers["Street"].addTo(map);
-L.control.layers(baseLayers).addTo(map);
+        <div class="search-container">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="text" placeholder="Search countries... (/)">
+          <div class="search-results"></div>
+        </div>
+      </div>
 
-// Scale
-L.control.scale({ imperial: true, metric: true }).addTo(map);
+      <div class="header-controls">
+        <div class="mode-selector" title="Color mode">
+          <button class="mode-btn active" data-mode="region">By Region</button>
+          <button class="mode-btn" data-mode="population">Population</button>
+          <button class="mode-btn" data-mode="gdp">GDP</button>
+        </div>
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let locA = null, locB = null;
-let markerA = null, markerB = null;
-let routeLine = null;
-let pickingMode = null; // 'a' or 'b'
+        <button class="control-btn" id="theme-btn">
+          <span class="btn-icon">☀️</span> Light
+        </button>
 
-const SPEEDS_KMH = { driving: 90, walking: 5, cycling: 20, flying: 900 };
-const FACTORS = { driving: 1.3, walking: 1.2, cycling: 1.25, flying: 1.0 };
-let travelMode = 'driving';
+        <button class="control-btn" id="toggle-sidebar-btn">
+          ◀ Hide Panel
+        </button>
+      </div>
+    </header>
 
-// Custom icons
-const iconA = L.divIcon({
-  className: '',
-  html: '<div style="background:#4caf50;color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:28px;height:28px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -30]
-});
+    <!-- Main Content -->
+    <div id="main">
+      <!-- Map -->
+      <div id="map-container">
+        <div id="globe-bg"></div>
 
-const iconB = L.divIcon({
-  className: '',
-  html: '<div style="background:#e94560;color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);width:28px;height:28px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>',
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -30]
-});
+        <!-- Mini Map -->
+        <div id="mini-map-container">
+          <svg id="mini-svg" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet">
+            <rect width="960" height="500" fill="var(--map-bg)"/>
+            <!-- Mini paths will be cloned by JS -->
+            <g id="mini-map-group"></g>
+            <rect class="mini-viewport" x="0" y="0" width="960" height="500"/>
+          </svg>
+        </div>
 
-// ── Sidebar toggle ────────────────────────────────────────────────────────────
-const sidebar = document.getElementById('sidebar');
-const sidebarToggle = document.getElementById('sidebar-toggle');
-sidebarToggle.addEventListener('click', () => {
-  sidebar.classList.toggle('collapsed');
-  sidebarToggle.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-  sidebarToggle.style.right = sidebar.classList.contains('collapsed') ? '0' : '320px';
-  setTimeout(() => map.invalidateSize(), 310);
-});
+        <!-- Zoom Indicator -->
+        <div class="zoom-indicator">100%</div>
 
-// ── Travel mode buttons ───────────────────────────────────────────────────────
-document.querySelectorAll('.mode-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    travelMode = btn.dataset.mode;
-    if (locA && locB) updateDistanceInfo();
-  });
-});
+        <!-- Main SVG Map -->
+        <svg id="world-svg" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet">
+          <!-- Ocean background -->
+          <rect id="ocean-bg" width="960" height="500" fill="var(--ocean)" rx="0"/>
+          
+          <!-- Country paths group -->
+          <g id="map-group">
+      <path class="country" data-code="US" d="M 146.7,113.9 L 301.3,113.9 L 301.3,180.6 L 266.7,180.6 L 221.3,177.8 L 221.3,166.7 L 256.0,166.7 L 256.0,152.8 L 277.3,152.8 L 277.3,138.9 L 301.3,127.8 L 293.3,119.4 L 146.7,113.9 Z"/>
+      <path class="country" data-code="CA" d="M 104.0,83.3 L 341.3,83.3 L 341.3,119.4 L 301.3,119.4 L 301.3,127.8 L 277.3,127.8 L 277.3,125.0 L 269.3,130.6 L 258.7,133.3 L 258.7,122.2 L 250.7,116.7 L 234.7,116.7 L 226.7,113.9 L 186.7,113.9 L 176.0,113.9 L 168.0,113.9 L 154.7,113.9 L 149.3,113.9 L 133.3,97.2 L 104.0,83.3 Z"/>
+      <path class="country" data-code="MX" d="M 168.0,161.1 L 221.3,177.8 L 240.0,188.9 L 248.0,200.0 L 240.0,211.1 L 234.7,208.3 L 234.7,200.0 L 226.7,197.2 L 221.3,188.9 L 202.7,197.2 L 200.0,186.1 L 189.3,183.3 L 176.0,186.1 L 170.7,169.4 L 168.0,161.1 Z"/>
+      <path class="country" data-code="BR" d="M 389.3,263.9 L 386.7,277.8 L 376.0,291.7 L 370.7,308.3 L 362.7,313.9 L 352.0,327.8 L 338.7,341.7 L 328.0,333.3 L 328.0,305.6 L 320.0,286.1 L 320.0,261.1 L 336.0,255.6 L 346.7,244.4 L 344.0,238.9 L 320.0,244.4 L 301.3,244.4 L 285.3,238.9 L 285.3,261.1 L 296.0,277.8 L 312.0,286.1 L 320.0,294.4 L 328.0,305.6 L 352.0,294.4 L 354.7,277.8 L 362.7,258.3 L 376.0,250.0 L 386.7,261.1 L 389.3,263.9 Z"/>
+      <path class="country" data-code="AR" d="M 338.7,341.7 L 328.0,355.6 L 314.7,366.7 L 306.7,377.8 L 304.0,394.4 L 298.7,400.0 L 288.0,388.9 L 288.0,366.7 L 293.3,350.0 L 298.7,327.8 L 306.7,311.1 L 314.7,311.1 L 325.3,305.6 L 328.0,319.4 L 328.0,333.3 L 338.7,341.7 Z"/>
+      <path class="country" data-code="CL" d="M 304.0,300.0 L 298.7,311.1 L 293.3,327.8 L 288.0,350.0 L 288.0,366.7 L 288.0,388.9 L 298.7,400.0 L 306.7,405.6 L 312.0,388.9 L 301.3,377.8 L 293.3,366.7 L 293.3,350.0 L 298.7,327.8 L 304.0,300.0 Z"/>
+      <path class="country" data-code="CO" d="M 301.3,244.4 L 285.3,238.9 L 285.3,261.1 L 296.0,261.1 L 304.0,255.6 L 320.0,261.1 L 320.0,258.3 L 328.0,252.8 L 341.3,244.4 L 346.7,238.9 L 320.0,227.8 L 312.0,222.2 L 306.7,219.4 L 301.3,219.4 L 288.0,216.7 L 280.0,219.4 L 274.7,227.8 L 274.7,236.1 L 290.7,238.9 L 301.3,244.4 Z"/>
+      <path class="country" data-code="VE" d="M 301.3,219.4 L 306.7,219.4 L 312.0,222.2 L 320.0,227.8 L 320.0,233.3 L 309.3,238.9 L 301.3,241.7 L 301.3,244.4 L 285.3,238.9 L 285.3,233.3 L 288.0,216.7 L 301.3,219.4 Z"/>
+      <path class="country" data-code="PE" d="M 285.3,300.0 L 296.0,288.9 L 296.0,261.1 L 285.3,261.1 L 285.3,238.9 L 274.7,250.0 L 266.7,258.3 L 266.7,272.2 L 280.0,288.9 L 285.3,300.0 Z"/>
+      <path class="country" data-code="BO" d="M 296.0,277.8 L 312.0,286.1 L 320.0,294.4 L 328.0,305.6 L 328.0,319.4 L 314.7,311.1 L 306.7,311.1 L 298.7,311.1 L 296.0,300.0 L 285.3,300.0 L 296.0,288.9 L 296.0,277.8 Z"/>
+      <path class="country" data-code="PY" d="M 314.7,311.1 L 325.3,305.6 L 328.0,311.1 L 328.0,319.4 L 320.0,313.9 L 314.7,311.1 Z"/>
+      <path class="country" data-code="UY" d="M 338.7,341.7 L 328.0,333.3 L 328.0,344.4 L 325.3,355.6 L 330.7,347.2 L 338.7,344.4 L 338.7,341.7 Z"/>
+      <path class="country" data-code="GY" d="M 322.7,230.6 L 320.0,238.9 L 328.0,247.2 L 328.0,233.3 L 322.7,230.6 Z"/>
+      <path class="country" data-code="SR" d="M 333.3,244.4 L 336.0,236.1 L 328.0,233.3 L 328.0,247.2 L 333.3,244.4 Z"/>
+      <path class="country" data-code="EC" d="M 280.0,261.1 L 266.7,255.6 L 266.7,261.1 L 280.0,263.9 L 280.0,261.1 Z"/>
+      <path class="country" data-code="GL" d="M 285.3,38.9 L 432.0,19.4 L 448.0,50.0 L 368.0,69.4 L 333.3,77.8 L 285.3,69.4 L 285.3,38.9 Z"/>
+      <path class="country" data-code="GB" d="M 466.7,111.1 L 474.7,108.3 L 477.3,105.6 L 480.0,102.8 L 480.0,97.2 L 474.7,94.4 L 469.3,88.9 L 464.0,88.9 L 466.7,100.0 L 469.3,105.6 L 466.7,111.1 Z"/>
+      <path class="country" data-code="IE" d="M 453.3,105.6 L 464.0,108.3 L 458.7,105.6 L 458.7,97.2 L 461.3,94.4 L 453.3,100.0 L 453.3,105.6 Z"/>
+      <path class="country" data-code="IS" d="M 413.3,72.2 L 445.3,72.2 L 445.3,66.7 L 418.7,66.7 L 413.3,72.2 Z"/>
+      <path class="country" data-code="NO" d="M 493.3,88.9 L 496.0,88.9 L 501.3,88.9 L 506.7,86.1 L 512.0,83.3 L 517.3,69.4 L 522.7,55.6 L 533.3,55.6 L 554.7,52.8 L 554.7,61.1 L 544.0,69.4 L 528.0,77.8 L 506.7,86.1 L 501.3,91.7 L 493.3,88.9 Z"/>
+      <path class="country" data-code="SE" d="M 509.3,94.4 L 512.0,94.4 L 517.3,94.4 L 522.7,91.7 L 528.0,86.1 L 533.3,75.0 L 538.7,69.4 L 544.0,66.7 L 544.0,61.1 L 533.3,61.1 L 528.0,69.4 L 517.3,77.8 L 512.0,88.9 L 509.3,94.4 Z"/>
+      <path class="country" data-code="FI" d="M 533.3,83.3 L 538.7,83.3 L 544.0,83.3 L 552.0,83.3 L 560.0,77.8 L 557.3,69.4 L 549.3,61.1 L 544.0,55.6 L 538.7,55.6 L 528.0,61.1 L 528.0,69.4 L 533.3,75.0 L 533.3,83.3 Z"/>
+      <path class="country" data-code="DK" d="M 501.3,100.0 L 506.7,97.2 L 512.0,97.2 L 512.0,91.7 L 506.7,88.9 L 501.3,91.7 L 501.3,100.0 Z"/>
+      <path class="country" data-code="DE" d="M 496.0,119.4 L 501.3,119.4 L 506.7,116.7 L 512.0,116.7 L 520.0,111.1 L 520.0,100.0 L 512.0,100.0 L 506.7,100.0 L 501.3,102.8 L 496.0,102.8 L 496.0,111.1 L 501.3,116.7 L 496.0,119.4 Z"/>
+      <path class="country" data-code="FR" d="M 469.3,116.7 L 474.7,119.4 L 480.0,119.4 L 485.3,127.8 L 488.0,127.8 L 490.7,125.0 L 498.7,127.8 L 498.7,119.4 L 493.3,113.9 L 485.3,108.3 L 480.0,111.1 L 474.7,113.9 L 469.3,116.7 Z"/>
+      <path class="country" data-code="ES" d="M 456.0,150.0 L 464.0,150.0 L 474.7,147.2 L 488.0,144.4 L 488.0,138.9 L 480.0,130.6 L 474.7,130.6 L 469.3,130.6 L 456.0,141.7 L 456.0,150.0 Z"/>
+      <path class="country" data-code="PT" d="M 456.0,147.2 L 461.3,147.2 L 461.3,138.9 L 464.0,133.3 L 458.7,133.3 L 456.0,138.9 L 456.0,147.2 Z"/>
+      <path class="country" data-code="IT" d="M 498.7,127.8 L 506.7,127.8 L 512.0,127.8 L 517.3,136.1 L 522.7,144.4 L 522.7,138.9 L 517.3,130.6 L 512.0,122.2 L 506.7,119.4 L 501.3,122.2 L 498.7,127.8 Z"/>
+      <path class="country" data-code="GR" d="M 533.3,136.1 L 538.7,136.1 L 544.0,138.9 L 549.3,136.1 L 549.3,133.3 L 544.0,133.3 L 538.7,133.3 L 533.3,136.1 Z"/>
+      <path class="country" data-code="PL" d="M 517.3,100.0 L 522.7,100.0 L 528.0,100.0 L 538.7,100.0 L 544.0,100.0 L 544.0,111.1 L 538.7,111.1 L 528.0,111.1 L 517.3,108.3 L 517.3,100.0 Z"/>
+      <path class="country" data-code="UA" d="M 544.0,116.7 L 549.3,116.7 L 554.7,122.2 L 565.3,122.2 L 570.7,119.4 L 576.0,111.1 L 565.3,105.6 L 554.7,105.6 L 544.0,105.6 L 544.0,116.7 Z"/>
+      <path class="country" data-code="RO" d="M 538.7,127.8 L 544.0,127.8 L 549.3,127.8 L 560.0,125.0 L 560.0,116.7 L 554.7,116.7 L 544.0,116.7 L 538.7,122.2 L 538.7,127.8 Z"/>
+      <path class="country" data-code="BY" d="M 544.0,105.6 L 554.7,105.6 L 565.3,105.6 L 565.3,100.0 L 554.7,94.4 L 544.0,97.2 L 544.0,105.6 Z"/>
+      <path class="country" data-code="CZ" d="M 512.0,111.1 L 517.3,111.1 L 522.7,111.1 L 528.0,111.1 L 528.0,108.3 L 522.7,108.3 L 512.0,108.3 L 512.0,111.1 Z"/>
+      <path class="country" data-code="SK" d="M 522.7,116.7 L 528.0,116.7 L 538.7,116.7 L 538.7,111.1 L 528.0,111.1 L 522.7,113.9 L 522.7,116.7 Z"/>
+      <path class="country" data-code="HU" d="M 522.7,122.2 L 528.0,122.2 L 533.3,122.2 L 538.7,122.2 L 538.7,116.7 L 533.3,116.7 L 522.7,116.7 L 522.7,122.2 Z"/>
+      <path class="country" data-code="AT" d="M 504.0,119.4 L 512.0,119.4 L 517.3,119.4 L 525.3,116.7 L 525.3,116.7 L 517.3,116.7 L 512.0,119.4 L 504.0,119.4 Z"/>
+      <path class="country" data-code="CH" d="M 496.0,122.2 L 501.3,119.4 L 506.7,119.4 L 506.7,122.2 L 501.3,125.0 L 496.0,122.2 Z"/>
+      <path class="country" data-code="NL" d="M 488.0,108.3 L 490.7,108.3 L 496.0,102.8 L 490.7,102.8 L 488.0,108.3 Z"/>
+      <path class="country" data-code="BE" d="M 485.3,111.1 L 496.0,111.1 L 496.0,108.3 L 490.7,108.3 L 485.3,108.3 L 485.3,111.1 Z"/>
+      <path class="country" data-code="LU" d="M 496.0,113.9 L 496.0,111.1 L 496.0,111.1 L 496.0,113.9 Z"/>
+      <path class="country" data-code="RU" d="M 552.0,100.0 L 586.7,97.2 L 613.3,97.2 L 640.0,97.2 L 666.7,97.2 L 693.3,97.2 L 720.0,97.2 L 746.7,97.2 L 773.3,97.2 L 800.0,105.6 L 826.7,116.7 L 853.3,116.7 L 853.3,100.0 L 853.3,83.3 L 826.7,77.8 L 800.0,77.8 L 773.3,77.8 L 746.7,77.8 L 720.0,77.8 L 693.3,77.8 L 666.7,61.1 L 640.0,61.1 L 613.3,63.9 L 586.7,69.4 L 560.0,75.0 L 549.3,83.3 L 552.0,100.0 Z"/>
+      <path class="country" data-code="TR" d="M 549.3,150.0 L 554.7,150.0 L 560.0,150.0 L 576.0,150.0 L 586.7,150.0 L 597.3,147.2 L 597.3,138.9 L 586.7,133.3 L 576.0,133.3 L 565.3,133.3 L 554.7,133.3 L 549.3,138.9 L 549.3,150.0 Z"/>
+      <path class="country" data-code="KZ" d="M 616.0,127.8 L 626.7,127.8 L 640.0,133.3 L 653.3,138.9 L 666.7,133.3 L 693.3,127.8 L 693.3,116.7 L 666.7,116.7 L 640.0,116.7 L 626.7,105.6 L 616.0,105.6 L 616.0,127.8 Z"/>
+      <path class="country" data-code="IR" d="M 597.3,144.4 L 608.0,144.4 L 618.7,147.2 L 629.3,177.8 L 640.0,177.8 L 650.7,166.7 L 645.3,155.6 L 634.7,150.0 L 624.0,144.4 L 613.3,144.4 L 602.7,144.4 L 597.3,144.4 Z"/>
+      <path class="country" data-code="SA" d="M 578.7,166.7 L 592.0,202.8 L 602.7,208.3 L 613.3,200.0 L 626.7,183.3 L 629.3,172.2 L 618.7,161.1 L 608.0,161.1 L 597.3,161.1 L 586.7,161.1 L 578.7,166.7 Z"/>
+      <path class="country" data-code="IQ" d="M 581.3,158.3 L 592.0,147.2 L 602.7,147.2 L 602.7,155.6 L 597.3,166.7 L 581.3,166.7 L 581.3,158.3 Z"/>
+      <path class="country" data-code="SY" d="M 576.0,158.3 L 581.3,158.3 L 592.0,147.2 L 586.7,147.2 L 576.0,150.0 L 576.0,158.3 Z"/>
+      <path class="country" data-code="JO" d="M 573.3,169.4 L 581.3,169.4 L 581.3,161.1 L 576.0,161.1 L 573.3,166.7 L 573.3,169.4 Z"/>
+      <path class="country" data-code="IL" d="M 570.7,169.4 L 573.3,169.4 L 573.3,158.3 L 570.7,158.3 L 570.7,169.4 Z"/>
+      <path class="country" data-code="LB" d="M 573.3,158.3 L 576.0,158.3 L 576.0,155.6 L 573.3,155.6 L 573.3,158.3 Z"/>
+      <path class="country" data-code="YE" d="M 592.0,208.3 L 602.7,211.1 L 613.3,208.3 L 624.0,205.6 L 624.0,194.4 L 608.0,194.4 L 597.3,200.0 L 592.0,208.3 Z"/>
+      <path class="country" data-code="OM" d="M 629.3,188.9 L 640.0,188.9 L 640.0,180.6 L 629.3,177.8 L 624.0,183.3 L 629.3,188.9 Z"/>
+      <path class="country" data-code="AE" d="M 618.7,186.1 L 626.7,186.1 L 629.3,183.3 L 626.7,177.8 L 618.7,180.6 L 618.7,186.1 Z"/>
+      <path class="country" data-code="KW" d="M 602.7,172.2 L 608.0,172.2 L 608.0,166.7 L 602.7,166.7 L 602.7,172.2 Z"/>
+      <path class="country" data-code="QA" d="M 613.3,183.3 L 618.7,183.3 L 618.7,177.8 L 613.3,180.6 L 613.3,183.3 Z"/>
+      <path class="country" data-code="BH" d="M 613.3,177.8 L 613.3,177.8 L 613.3,177.8 L 613.3,177.8 Z"/>
+      <path class="country" data-code="IN" d="M 661.3,188.9 L 672.0,188.9 L 682.7,227.8 L 693.3,227.8 L 704.0,188.9 L 693.3,172.2 L 677.3,161.1 L 666.7,161.1 L 656.0,172.2 L 661.3,188.9 Z"/>
+      <path class="country" data-code="PK" d="M 645.3,172.2 L 656.0,172.2 L 666.7,161.1 L 677.3,161.1 L 677.3,150.0 L 666.7,150.0 L 650.7,150.0 L 645.3,172.2 Z"/>
+      <path class="country" data-code="AF" d="M 645.3,150.0 L 656.0,144.4 L 666.7,144.4 L 677.3,150.0 L 666.7,155.6 L 650.7,166.7 L 645.3,161.1 L 645.3,150.0 Z"/>
+      <path class="country" data-code="BD" d="M 714.7,188.9 L 725.3,188.9 L 725.3,183.3 L 714.7,177.8 L 709.3,183.3 L 714.7,188.9 Z"/>
+      <path class="country" data-code="MM" d="M 725.3,172.2 L 736.0,172.2 L 746.7,188.9 L 741.3,200.0 L 736.0,205.6 L 725.3,188.9 L 725.3,172.2 Z"/>
+      <path class="country" data-code="TH" d="M 746.7,200.0 L 752.0,200.0 L 757.3,211.1 L 757.3,233.3 L 746.7,238.9 L 744.0,227.8 L 741.3,211.1 L 746.7,200.0 Z"/>
+      <path class="country" data-code="VN" d="M 757.3,188.9 L 768.0,188.9 L 768.0,200.0 L 762.7,216.7 L 757.3,222.2 L 752.0,216.7 L 757.3,205.6 L 757.3,188.9 Z"/>
+      <path class="country" data-code="LA" d="M 746.7,188.9 L 757.3,188.9 L 757.3,200.0 L 752.0,205.6 L 746.7,200.0 L 746.7,188.9 Z"/>
+      <path class="country" data-code="KH" d="M 752.0,211.1 L 762.7,216.7 L 762.7,222.2 L 752.0,222.2 L 752.0,211.1 Z"/>
+      <path class="country" data-code="MY" d="M 746.7,238.9 L 757.3,238.9 L 768.0,244.4 L 778.7,238.9 L 789.3,233.3 L 794.7,233.3 L 784.0,238.9 L 773.3,244.4 L 762.7,244.4 L 752.0,238.9 L 746.7,238.9 Z"/>
+      <path class="country" data-code="ID" d="M 736.0,238.9 L 752.0,250.0 L 768.0,255.6 L 784.0,261.1 L 800.0,261.1 L 810.7,255.6 L 821.3,250.0 L 826.7,244.4 L 821.3,238.9 L 810.7,244.4 L 800.0,250.0 L 784.0,255.6 L 773.3,261.1 L 762.7,255.6 L 752.0,244.4 L 736.0,238.9 Z"/>
+      <path class="country" data-code="PH" d="M 794.7,222.2 L 800.0,227.8 L 805.3,222.2 L 805.3,205.6 L 800.0,200.0 L 794.7,205.6 L 794.7,222.2 Z"/>
+      <path class="country" data-code="CN" d="M 677.3,138.9 L 693.3,127.8 L 714.7,127.8 L 746.7,116.7 L 773.3,116.7 L 800.0,116.7 L 821.3,133.3 L 826.7,150.0 L 805.3,166.7 L 784.0,188.9 L 762.7,188.9 L 746.7,188.9 L 736.0,172.2 L 725.3,172.2 L 714.7,177.8 L 704.0,172.2 L 693.3,166.7 L 677.3,150.0 L 677.3,138.9 Z"/>
+      <path class="country" data-code="JP" d="M 826.7,161.1 L 832.0,155.6 L 842.7,150.0 L 848.0,144.4 L 853.3,133.3 L 858.7,127.8 L 848.0,133.3 L 842.7,144.4 L 832.0,155.6 L 826.7,161.1 Z"/>
+      <path class="country" data-code="KR" d="M 816.0,155.6 L 821.3,155.6 L 826.7,150.0 L 826.7,144.4 L 821.3,144.4 L 816.0,150.0 L 816.0,155.6 Z"/>
+      <path class="country" data-code="KP" d="M 810.7,144.4 L 816.0,144.4 L 826.7,138.9 L 821.3,133.3 L 810.7,138.9 L 810.7,144.4 Z"/>
+      <path class="country" data-code="MN" d="M 714.7,127.8 L 736.0,116.7 L 746.7,116.7 L 778.7,116.7 L 789.3,116.7 L 800.0,111.1 L 800.0,122.2 L 789.3,127.8 L 773.3,133.3 L 746.7,133.3 L 736.0,127.8 L 714.7,127.8 Z"/>
+      <path class="country" data-code="TW" d="M 800.0,188.9 L 805.3,188.9 L 805.3,180.6 L 800.0,180.6 L 800.0,188.9 Z"/>
+      <path class="country" data-code="UZ" d="M 629.3,138.9 L 640.0,138.9 L 650.7,138.9 L 656.0,144.4 L 645.3,150.0 L 629.3,144.4 L 629.3,138.9 Z"/>
+      <path class="country" data-code="TM" d="M 618.7,144.4 L 629.3,144.4 L 640.0,144.4 L 645.3,150.0 L 634.7,150.0 L 624.0,144.4 L 618.7,144.4 Z"/>
+      <path class="country" data-code="KG" d="M 666.7,138.9 L 677.3,138.9 L 682.7,133.3 L 677.3,133.3 L 666.7,133.3 L 666.7,138.9 Z"/>
+      <path class="country" data-code="TJ" d="M 656.0,144.4 L 666.7,144.4 L 672.0,144.4 L 672.0,150.0 L 661.3,150.0 L 656.0,144.4 Z"/>
+      <path class="country" data-code="AZ" d="M 602.7,144.4 L 613.3,144.4 L 613.3,133.3 L 608.0,133.3 L 602.7,138.9 L 602.7,144.4 Z"/>
+      <path class="country" data-code="AM" d="M 597.3,144.4 L 602.7,144.4 L 602.7,138.9 L 597.3,138.9 L 597.3,144.4 Z"/>
+      <path class="country" data-code="GE" d="M 586.7,133.3 L 597.3,133.3 L 602.7,133.3 L 597.3,127.8 L 586.7,127.8 L 586.7,133.3 Z"/>
+      <path class="country" data-code="EG" d="M 544.0,188.9 L 554.7,188.9 L 565.3,188.9 L 576.0,172.2 L 570.7,166.7 L 560.0,166.7 L 549.3,172.2 L 544.0,188.9 Z"/>
+      <path class="country" data-code="LY" d="M 506.7,188.9 L 517.3,188.9 L 528.0,188.9 L 544.0,188.9 L 549.3,188.9 L 549.3,166.7 L 533.3,161.1 L 512.0,161.1 L 506.7,172.2 L 506.7,188.9 Z"/>
+      <path class="country" data-code="TN" d="M 501.3,166.7 L 506.7,166.7 L 512.0,172.2 L 512.0,150.0 L 501.3,144.4 L 501.3,155.6 L 501.3,166.7 Z"/>
+      <path class="country" data-code="MA" d="M 464.0,172.2 L 474.7,172.2 L 485.3,166.7 L 485.3,150.0 L 474.7,150.0 L 464.0,150.0 L 464.0,166.7 L 464.0,172.2 Z"/>
+      <path class="country" data-code="DZ" d="M 474.7,200.0 L 490.7,200.0 L 501.3,200.0 L 512.0,188.9 L 517.3,188.9 L 506.7,166.7 L 501.3,166.7 L 485.3,172.2 L 474.7,172.2 L 464.0,172.2 L 458.7,177.8 L 474.7,200.0 Z"/>
+      <path class="country" data-code="MR" d="M 432.0,208.3 L 458.7,208.3 L 469.3,208.3 L 469.3,194.4 L 458.7,183.3 L 448.0,188.9 L 432.0,188.9 L 432.0,208.3 Z"/>
+      <path class="country" data-code="ML" d="M 469.3,216.7 L 480.0,211.1 L 490.7,211.1 L 490.7,194.4 L 469.3,194.4 L 458.7,208.3 L 469.3,216.7 Z"/>
+      <path class="country" data-code="NE" d="M 485.3,216.7 L 490.7,216.7 L 517.3,216.7 L 517.3,211.1 L 517.3,194.4 L 512.0,188.9 L 501.3,200.0 L 490.7,200.0 L 480.0,211.1 L 485.3,216.7 Z"/>
+      <path class="country" data-code="TD" d="M 517.3,227.8 L 522.7,227.8 L 538.7,227.8 L 544.0,216.7 L 544.0,188.9 L 517.3,194.4 L 517.3,216.7 L 517.3,227.8 Z"/>
+      <path class="country" data-code="SD" d="M 544.0,216.7 L 544.0,194.4 L 565.3,188.9 L 576.0,188.9 L 576.0,200.0 L 576.0,208.3 L 565.3,216.7 L 554.7,227.8 L 544.0,227.8 L 544.0,216.7 Z"/>
+      <path class="country" data-code="ET" d="M 576.0,238.9 L 586.7,238.9 L 597.3,227.8 L 592.0,216.7 L 581.3,211.1 L 576.0,216.7 L 570.7,227.8 L 576.0,238.9 Z"/>
+      <path class="country" data-code="ER" d="M 576.0,200.0 L 586.7,200.0 L 597.3,211.1 L 592.0,216.7 L 581.3,211.1 L 576.0,200.0 Z"/>
+      <path class="country" data-code="DJ" d="M 592.0,219.4 L 597.3,219.4 L 597.3,216.7 L 592.0,216.7 L 592.0,219.4 Z"/>
+      <path class="country" data-code="SO" d="M 586.7,238.9 L 597.3,227.8 L 602.7,227.8 L 613.3,222.2 L 613.3,211.1 L 608.0,200.0 L 597.3,211.1 L 592.0,216.7 L 586.7,238.9 Z"/>
+      <path class="country" data-code="KE" d="M 570.7,261.1 L 581.3,261.1 L 592.0,250.0 L 592.0,238.9 L 581.3,238.9 L 576.0,238.9 L 570.7,244.4 L 570.7,261.1 Z"/>
+      <path class="country" data-code="UG" d="M 560.0,250.0 L 565.3,250.0 L 570.7,250.0 L 570.7,238.9 L 560.0,238.9 L 560.0,250.0 Z"/>
+      <path class="country" data-code="TZ" d="M 560.0,277.8 L 570.7,277.8 L 586.7,277.8 L 586.7,261.1 L 576.0,255.6 L 570.7,255.6 L 560.0,255.6 L 560.0,277.8 Z"/>
+      <path class="country" data-code="MZ" d="M 565.3,277.8 L 576.0,288.9 L 586.7,288.9 L 581.3,305.6 L 570.7,316.7 L 565.3,316.7 L 554.7,311.1 L 554.7,283.3 L 565.3,277.8 Z"/>
+      <path class="country" data-code="ZM" d="M 538.7,272.2 L 544.0,272.2 L 554.7,272.2 L 560.0,277.8 L 554.7,283.3 L 554.7,300.0 L 538.7,300.0 L 538.7,272.2 Z"/>
+      <path class="country" data-code="ZW" d="M 554.7,300.0 L 565.3,294.4 L 570.7,305.6 L 560.0,311.1 L 554.7,311.1 L 554.7,300.0 Z"/>
+      <path class="country" data-code="BW" d="M 533.3,300.0 L 544.0,300.0 L 554.7,300.0 L 554.7,311.1 L 549.3,316.7 L 533.3,316.7 L 533.3,300.0 Z"/>
+      <path class="country" data-code="NA" d="M 512.0,300.0 L 528.0,300.0 L 533.3,300.0 L 533.3,311.1 L 528.0,327.8 L 522.7,333.3 L 517.3,311.1 L 512.0,311.1 L 512.0,300.0 Z"/>
+      <path class="country" data-code="ZA" d="M 522.7,327.8 L 533.3,322.2 L 544.0,316.7 L 560.0,311.1 L 565.3,327.8 L 560.0,344.4 L 538.7,344.4 L 528.0,344.4 L 522.7,327.8 Z"/>
+      <path class="country" data-code="NG" d="M 485.3,238.9 L 501.3,238.9 L 517.3,227.8 L 517.3,216.7 L 501.3,216.7 L 490.7,222.2 L 485.3,227.8 L 485.3,238.9 Z"/>
+      <path class="country" data-code="CM" d="M 501.3,244.4 L 512.0,244.4 L 517.3,227.8 L 512.0,216.7 L 501.3,216.7 L 501.3,227.8 L 501.3,244.4 Z"/>
+      <path class="country" data-code="CD" d="M 512.0,261.1 L 517.3,261.1 L 528.0,261.1 L 538.7,261.1 L 544.0,261.1 L 554.7,255.6 L 560.0,244.4 L 554.7,238.9 L 544.0,238.9 L 538.7,250.0 L 528.0,250.0 L 517.3,250.0 L 512.0,250.0 L 512.0,261.1 Z"/>
+      <path class="country" data-code="CG" d="M 517.3,261.1 L 517.3,250.0 L 517.3,238.9 L 512.0,238.9 L 506.7,244.4 L 512.0,250.0 L 512.0,261.1 L 517.3,261.1 Z"/>
+      <path class="country" data-code="CF" d="M 517.3,238.9 L 528.0,238.9 L 538.7,238.9 L 544.0,227.8 L 533.3,222.2 L 522.7,227.8 L 517.3,227.8 L 517.3,238.9 Z"/>
+      <path class="country" data-code="GA" d="M 501.3,255.6 L 506.7,255.6 L 512.0,255.6 L 512.0,244.4 L 506.7,244.4 L 501.3,250.0 L 501.3,255.6 Z"/>
+      <path class="country" data-code="GQ" d="M 501.3,244.4 L 506.7,244.4 L 506.7,238.9 L 501.3,238.9 L 501.3,244.4 Z"/>
+      <path class="country" data-code="AO" d="M 512.0,261.1 L 517.3,261.1 L 517.3,272.2 L 522.7,288.9 L 522.7,300.0 L 517.3,300.0 L 512.0,300.0 L 512.0,288.9 L 512.0,272.2 L 512.0,261.1 Z"/>
+      <path class="country" data-code="SS" d="M 544.0,238.9 L 554.7,238.9 L 565.3,227.8 L 576.0,238.9 L 576.0,244.4 L 565.3,250.0 L 554.7,250.0 L 544.0,250.0 L 544.0,238.9 Z"/>
+      <path class="country" data-code="GH" d="M 469.3,238.9 L 480.0,238.9 L 485.3,238.9 L 485.3,227.8 L 474.7,227.8 L 469.3,227.8 L 469.3,238.9 Z"/>
+      <path class="country" data-code="CI" d="M 458.7,238.9 L 469.3,238.9 L 469.3,227.8 L 464.0,222.2 L 458.7,222.2 L 458.7,233.3 L 458.7,238.9 Z"/>
+      <path class="country" data-code="BF" d="M 469.3,222.2 L 480.0,222.2 L 490.7,216.7 L 480.0,211.1 L 469.3,211.1 L 469.3,222.2 Z"/>
+      <path class="country" data-code="SN" d="M 437.3,216.7 L 448.0,216.7 L 442.7,211.1 L 437.3,211.1 L 437.3,216.7 Z"/>
+      <path class="country" data-code="GM" d="M 437.3,213.9 L 442.7,213.9 L 442.7,211.1 L 437.3,211.1 L 437.3,213.9 Z"/>
+      <path class="country" data-code="GN" d="M 442.7,227.8 L 458.7,227.8 L 458.7,216.7 L 442.7,216.7 L 442.7,227.8 Z"/>
+      <path class="country" data-code="GW" d="M 437.3,222.2 L 442.7,222.2 L 442.7,216.7 L 437.3,216.7 L 437.3,222.2 Z"/>
+      <path class="country" data-code="SL" d="M 442.7,230.6 L 453.3,230.6 L 453.3,222.2 L 442.7,222.2 L 442.7,230.6 Z"/>
+      <path class="country" data-code="LR" d="M 453.3,238.9 L 458.7,238.9 L 458.7,227.8 L 453.3,227.8 L 453.3,238.9 Z"/>
+      <path class="country" data-code="TG" d="M 480.0,233.3 L 485.3,233.3 L 485.3,222.2 L 480.0,219.4 L 480.0,233.3 Z"/>
+      <path class="country" data-code="BJ" d="M 485.3,233.3 L 490.7,233.3 L 490.7,216.7 L 485.3,216.7 L 485.3,233.3 Z"/>
+      <path class="country" data-code="RW" d="M 554.7,255.6 L 560.0,255.6 L 560.0,250.0 L 554.7,250.0 L 554.7,255.6 Z"/>
+      <path class="country" data-code="BI" d="M 554.7,261.1 L 560.0,261.1 L 560.0,255.6 L 554.7,255.6 L 554.7,261.1 Z"/>
+      <path class="country" data-code="MW" d="M 565.3,288.9 L 570.7,288.9 L 570.7,277.8 L 565.3,277.8 L 565.3,288.9 Z"/>
+      <path class="country" data-code="SZ" d="M 560.0,322.2 L 565.3,322.2 L 565.3,327.8 L 560.0,327.8 L 560.0,322.2 Z"/>
+      <path class="country" data-code="LS" d="M 554.7,327.8 L 560.0,327.8 L 560.0,333.3 L 554.7,333.3 L 554.7,327.8 Z"/>
+      <path class="country" data-code="MG" d="M 597.3,322.2 L 613.3,316.7 L 613.3,283.3 L 597.3,288.9 L 597.3,305.6 L 597.3,322.2 Z"/>
+      <path class="country" data-code="AU" d="M 784.0,338.9 L 800.0,338.9 L 821.3,305.6 L 842.7,288.9 L 848.0,288.9 L 858.7,288.9 L 874.7,300.0 L 885.3,322.2 L 880.0,338.9 L 864.0,355.6 L 842.7,355.6 L 826.7,344.4 L 810.7,344.4 L 784.0,344.4 L 784.0,338.9 Z"/>
+      <path class="country" data-code="NZ" d="M 922.7,377.8 L 938.7,366.7 L 954.7,355.6 L 938.7,344.4 L 928.0,355.6 L 922.7,372.2 L 922.7,377.8 Z"/>
+      <path class="country" data-code="PG" d="M 853.3,261.1 L 864.0,266.7 L 874.7,266.7 L 874.7,272.2 L 858.7,277.8 L 848.0,272.2 L 842.7,261.1 L 853.3,261.1 Z"/>          </g>
+        </svg>
 
-// ── Geocoding (Nominatim) ─────────────────────────────────────────────────────
-async function geocode(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  return res.json();
-}
+        <!-- Map Controls -->
+        <div class="map-controls">
+          <button class="map-btn" id="zoom-in-btn" title="Zoom In (+)">+</button>
+          <button class="map-btn" id="zoom-out-btn" title="Zoom Out (-)">−</button>
+          <button class="map-btn" id="reset-btn" title="Reset View (R)">⌂</button>
+        </div>
 
-async function reverseGeocode(lat, lon) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-  return res.json();
-}
+        <!-- Coordinates Display -->
+        <div class="map-coords">0.00°N 0.00°E</div>
 
-function setupAutocomplete(inputId, listId, onSelect) {
-  const input = document.getElementById(inputId);
-  const list = document.getElementById(listId);
-  let debounceTimer;
+        <!-- Legend -->
+        <div id="legend">
+          <span class="legend-title">Legend</span>
+          <div class="legend-items"></div>
+        </div>
+      </div>
 
-  input.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    const q = input.value.trim();
-    if (q.length < 3) { list.classList.remove('visible'); return; }
-    debounceTimer = setTimeout(async () => {
-      const results = await geocode(q);
-      list.innerHTML = '';
-      if (!results.length) { list.classList.remove('visible'); return; }
-      results.forEach(r => {
-        const li = document.createElement('li');
-        li.textContent = r.display_name;
-        li.addEventListener('click', () => {
-          input.value = r.display_name;
-          list.classList.remove('visible');
-          onSelect({ lat: parseFloat(r.lat), lon: parseFloat(r.lon), name: r.display_name });
-        });
-        list.appendChild(li);
+      <!-- Sidebar -->
+      <aside id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-tab="info">Country Info</button>
+            <button class="sidebar-tab" data-tab="rankings">Rankings</button>
+            <button class="sidebar-tab" data-tab="stats">World Stats</button>
+          </div>
+        </div>
+        <div class="sidebar-content">
+          <div class="tab-pane" data-tab="info" style="display:block">
+            <div class="country-panel"></div>
+          </div>
+          <div class="tab-pane" data-tab="rankings" style="display:none">
+            <div class="rankings-panel"></div>
+          </div>
+          <div class="tab-pane" data-tab="stats" style="display:none">
+            <div class="stats-panel"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Keyboard shortcuts hint -->
+  <div style="
+    position:fixed; bottom:8px; left:50%; transform:translateX(-50%);
+    font-size:10px; color:var(--text-muted); z-index:5; pointer-events:none;
+    font-family:'Inter',sans-serif; letter-spacing:0.3px;
+  ">
+    Keyboard: <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">+/-</kbd> zoom &nbsp;
+    <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">R</kbd> reset &nbsp;
+    <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">T</kbd> theme &nbsp;
+    <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">S</kbd> sidebar &nbsp;
+    <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">/</kbd> search &nbsp;
+    <kbd style="background:var(--bg-card);padding:1px 4px;border-radius:3px;font-size:10px">Esc</kbd> deselect
+  </div>
+
+  <!-- Scripts -->
+  <script src="countries-data.js"></script>
+  <script>
+    // Apply initial country colors from data
+    document.addEventListener('DOMContentLoaded', () => {
+      const paths = document.querySelectorAll('#map-group .country');
+      paths.forEach(p => {
+        const code = p.dataset.code;
+        const d = COUNTRIES_DATA[code];
+        if (d) {
+          const rc = REGION_COLORS[d.region];
+          p.style.fill = rc ? rc.primary : '#2a3a4a';
+        } else {
+          p.style.fill = '#2a3a4a';
+        }
       });
-      list.classList.add('visible');
-    }, 400);
-  });
 
-  document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !list.contains(e.target)) {
-      list.classList.remove('visible');
-    }
-  });
-}
-
-setupAutocomplete('search-a', 'list-a', (loc) => setLocation('a', loc));
-setupAutocomplete('search-b', 'list-b', (loc) => setLocation('b', loc));
-
-// ── Map click picking ─────────────────────────────────────────────────────────
-const banner = document.getElementById('click-mode-banner');
-
-function startPicking(which) {
-  pickingMode = which;
-  banner.textContent = `Click on the map to set Location ${which.toUpperCase()}`;
-  banner.style.display = 'block';
-  map.getContainer().style.cursor = 'crosshair';
-}
-
-document.getElementById('pick-a').addEventListener('click', () => startPicking('a'));
-document.getElementById('pick-b').addEventListener('click', () => startPicking('b'));
-
-map.on('click', async (e) => {
-  if (!pickingMode) return;
-  const { lat, lng } = e.latlng;
-  try {
-    const data = await reverseGeocode(lat, lng);
-    const name = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    setLocation(pickingMode, { lat, lon: lng, name });
-    const inputId = pickingMode === 'a' ? 'search-a' : 'search-b';
-    document.getElementById(inputId).value = name;
-  } catch {
-    setLocation(pickingMode, { lat, lon: lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
-  }
-  pickingMode = null;
-  banner.style.display = 'none';
-  map.getContainer().style.cursor = '';
-});
-
-// ── Set location ──────────────────────────────────────────────────────────────
-function setLocation(which, loc) {
-  if (which === 'a') {
-    locA = loc;
-    if (markerA) map.removeLayer(markerA);
-    markerA = L.marker([loc.lat, loc.lon], { icon: iconA, draggable: true })
-      .addTo(map)
-      .bindPopup(`<b>📍 Location A</b><br>${loc.name}`)
-      .openPopup();
-    markerA.on('dragend', async (e) => {
-      const p = e.target.getLatLng();
-      const data = await reverseGeocode(p.lat, p.lng).catch(() => null);
-      const name = data ? data.display_name : `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
-      locA = { lat: p.lat, lon: p.lng, name };
-      document.getElementById('search-a').value = name;
-      updateCoordDisplay();
-      if (locA && locB) drawRoute();
+      // Clone paths to mini map
+      const miniGroup = document.getElementById('mini-map-group');
+      paths.forEach(p => {
+        const clone = p.cloneNode(false);
+        clone.style.pointerEvents = 'none';
+        clone.style.opacity = '0.7';
+        miniGroup.appendChild(clone);
+      });
     });
-    document.getElementById('coord-a').textContent = `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}`;
-    map.flyTo([loc.lat, loc.lon], Math.max(map.getZoom(), 6), { duration: 1.2 });
-  } else {
-    locB = loc;
-    if (markerB) map.removeLayer(markerB);
-    markerB = L.marker([loc.lat, loc.lon], { icon: iconB, draggable: true })
-      .addTo(map)
-      .bindPopup(`<b>🏁 Location B</b><br>${loc.name}`)
-      .openPopup();
-    markerB.on('dragend', async (e) => {
-      const p = e.target.getLatLng();
-      const data = await reverseGeocode(p.lat, p.lng).catch(() => null);
-      const name = data ? data.display_name : `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
-      locB = { lat: p.lat, lon: p.lng, name };
-      document.getElementById('search-b').value = name;
-      updateCoordDisplay();
-      if (locA && locB) drawRoute();
-    });
-    document.getElementById('coord-b').textContent = `${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}`;
-    map.flyTo([loc.lat, loc.lon], Math.max(map.getZoom(), 6), { duration: 1.2 });
-  }
-}
-
-function updateCoordDisplay() {
-  if (locA) document.getElementById('coord-a').textContent = `${locA.lat.toFixed(5)}, ${locA.lon.toFixed(5)}`;
-  if (locB) document.getElementById('coord-b').textContent = `${locB.lat.toFixed(5)}, ${locB.lon.toFixed(5)}`;
-}
-
-// ── Haversine distance ────────────────────────────────────────────────────────
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function formatDist(km) {
-  return km >= 1 ? `${km.toFixed(1)} km` : `${(km * 1000).toFixed(0)} m`;
-}
-
-function formatTime(hours) {
-  if (hours < 1/60) return '< 1 min';
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (h === 0) return `${m} min`;
-  if (m === 0) return `${h} hr`;
-  return `${h} hr ${m} min`;
-}
-
-function updateDistanceInfo() {
-  if (!locA || !locB) return;
-  const straight = haversineKm(locA.lat, locA.lon, locB.lat, locB.lon);
-  const factor = FACTORS[travelMode];
-  const est = travelMode === 'flying' ? straight : straight * factor;
-  const speed = SPEEDS_KMH[travelMode];
-  const time = est / speed;
-
-  document.getElementById('dist-straight').textContent = formatDist(straight);
-  document.getElementById('dist-est').textContent = travelMode === 'flying'
-    ? formatDist(est) + ' (direct)'
-    : formatDist(est);
-  document.getElementById('time-est').textContent = formatTime(time);
-}
-
-// ── Draw straight-line / great-circle route ───────────────────────────────────
-function drawRoute() {
-  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-  if (!locA || !locB) return;
-
-  // Great-circle geodesic line using many intermediate points
-  const pts = geodesicPoints([locA.lat, locA.lon], [locB.lat, locB.lon], 100);
-  routeLine = L.polyline(pts, {
-    color: '#e94560',
-    weight: 3,
-    opacity: 0.8,
-    dashArray: travelMode === 'flying' ? '8 6' : null
-  }).addTo(map);
-
-  // Fit map
-  const bounds = L.latLngBounds([
-    [locA.lat, locA.lon],
-    [locB.lat, locB.lon]
-  ]);
-  map.fitBounds(bounds, { padding: [60, 60] });
-
-  updateDistanceInfo();
-  updateInstructions();
-}
-
-function geodesicPoints(from, to, steps) {
-  const pts = [];
-  const [lat1, lon1] = from.map(d => d * Math.PI / 180);
-  const [lat2, lon2] = to.map(d => d * Math.PI / 180);
-  for (let i = 0; i <= steps; i++) {
-    const f = i / steps;
-    const d = 2 * Math.asin(Math.sqrt(
-      Math.sin((lat2 - lat1) / 2) ** 2 +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2
-    ));
-    if (d === 0) { pts.push(from); continue; }
-    const A = Math.sin((1 - f) * d) / Math.sin(d);
-    const B = Math.sin(f * d) / Math.sin(d);
-    const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
-    const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
-    const z = A * Math.sin(lat1) + B * Math.sin(lat2);
-    const lat = Math.atan2(z, Math.sqrt(x ** 2 + y ** 2)) * 180 / Math.PI;
-    const lon = Math.atan2(y, x) * 180 / Math.PI;
-    pts.push([lat, lon]);
-  }
-  return pts;
-}
-
-function updateInstructions() {
-  const panel = document.getElementById('instructions-panel');
-  if (!locA || !locB) {
-    panel.innerHTML = '<p class="no-data">Select two locations and click Calculate.</p>';
-    return;
-  }
-  const straight = haversineKm(locA.lat, locA.lon, locB.lat, locB.lon);
-  const factor = FACTORS[travelMode];
-  const est = travelMode === 'flying' ? straight : straight * factor;
-  const speed = SPEEDS_KMH[travelMode];
-  const time = est / speed;
-  const icons = { driving: '🚗', walking: '🚶', cycling: '🚴', flying: '✈️' };
-
-  panel.innerHTML = `
-    <div class="instruction-step">
-      <div class="step-num">1</div>
-      <div>Start at <strong>${escHtml(locA.name.split(',')[0])}</strong></div>
-    </div>
-    <div class="instruction-step">
-      <div class="step-num">2</div>
-      <div>Travel ${icons[travelMode]} ${travelMode} for approximately <strong>${formatDist(est)}</strong></div>
-    </div>
-    <div class="instruction-step">
-      <div class="step-num">3</div>
-      <div>Estimated travel time: <strong>${formatTime(time)}</strong></div>
-    </div>
-    <div class="instruction-step">
-      <div class="step-num">4</div>
-      <div>Arrive at <strong>${escHtml(locB.name.split(',')[0])}</strong></div>
-    </div>
-    <div class="tip" style="margin-top:10px; color:#8a9ab8;">
-      Straight-line distance: ${formatDist(straight)}<br>
-      Coordinates A: ${locA.lat.toFixed(4)}°, ${locA.lon.toFixed(4)}°<br>
-      Coordinates B: ${locB.lat.toFixed(4)}°, ${locB.lon.toFixed(4)}°
-    </div>
-  `;
-}
-
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Calculate button ──────────────────────────────────────────────────────────
-document.getElementById('calc-btn').addEventListener('click', () => {
-  if (!locA || !locB) {
-    alert('Please set both Location A and Location B first.');
-    return;
-  }
-  drawRoute();
-});
-
-// ── Clear button ──────────────────────────────────────────────────────────────
-document.getElementById('clear-btn').addEventListener('click', () => {
-  locA = null; locB = null;
-  if (markerA) { map.removeLayer(markerA); markerA = null; }
-  if (markerB) { map.removeLayer(markerB); markerB = null; }
-  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-  document.getElementById('search-a').value = '';
-  document.getElementById('search-b').value = '';
-  document.getElementById('coord-a').textContent = 'Not set';
-  document.getElementById('coord-b').textContent = 'Not set';
-  document.getElementById('dist-straight').textContent = '—';
-  document.getElementById('dist-est').textContent = '—';
-  document.getElementById('time-est').textContent = '—';
-  document.getElementById('instructions-panel').innerHTML =
-    '<p class="no-data">Select two locations and click Calculate.</p>';
-  map.flyTo([20, 0], 2, { duration: 1.5 });
-});
-
-// ── Map double-click zoom ─────────────────────────────────────────────────────
-map.doubleClickZoom.enable();
-
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    pickingMode = null;
-    banner.style.display = 'none';
-    map.getContainer().style.cursor = '';
-    document.getElementById('list-a').classList.remove('visible');
-    document.getElementById('list-b').classList.remove('visible');
-  }
-});
-</script>
+  </script>
+  <script src="world-map.js"></script>
 </body>
 </html>
